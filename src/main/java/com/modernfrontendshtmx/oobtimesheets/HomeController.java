@@ -3,7 +3,9 @@ package com.modernfrontendshtmx.oobtimesheets;
 import com.modernfrontendshtmx.oobtimesheets.project.Project;
 import com.modernfrontendshtmx.oobtimesheets.project.ProjectService;
 import com.modernfrontendshtmx.oobtimesheets.timeregistration.TimeRegistrationService;
+import io.github.wimdeblauwe.htmx.spring.boot.mvc.HtmxResponse;
 import io.github.wimdeblauwe.htmx.spring.boot.mvc.HxRequest;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.time.DayOfWeek;
@@ -31,24 +34,39 @@ public class HomeController {
         this.projectService = projectService;
         this.timeRegistrationService = timeRegistrationService;
     }
+
     @GetMapping
     public String index(Model model, Locale locale) {
-        model.addAttribute("projects",projectService.getProjects());
+        model.addAttribute("projects", projectService.getProjects());
         List<LocalDate> daysOfCurrentWeek = getDaysOfCurrentWeek(locale);
         model.addAttribute("days", daysOfCurrentWeek);
-        model.addAttribute("total",getTotal(daysOfCurrentWeek));
+        model.addAttribute("total", getTotal(daysOfCurrentWeek));
+        for (LocalDate localDate : daysOfCurrentWeek) {
+            model.addAttribute("dayTotal_" +
+                            localDate.format(DateTimeFormatter.ofPattern("yyyyMMdd", locale)),
+                    getTotal(List.of(localDate)));
+        }
         return "index";
     }
+
     @HxRequest
     @PutMapping("projects/{projectId}/{date}")
-    public String update( @PathVariable int projectId,
-                          @PathVariable LocalDate date,
-                          Model model,
-                          Double value,
-                          Locale locale) {
-        Duration duration = value==null? Duration.ZERO:Duration.ofMinutes((long)(value * 60.0));
-        timeRegistrationService.addOrUpdateRegistration(projectId,date,duration);
-       return  "index :: #overall-total";
+    public HtmxResponse update(@PathVariable int projectId,
+                               @PathVariable LocalDate date,
+                               Model model,
+                               Double value,
+                               Locale locale) {
+        Duration duration = value == null ? Duration.ZERO : Duration.ofMinutes((long) (value * 60.0));
+        timeRegistrationService.addOrUpdateRegistration(projectId, date, duration);
+
+        model.addAttribute("total", getTotal(getDaysOfCurrentWeek(locale)));
+        model.addAttribute("day", date);
+        model.addAttribute("dayTotal_" + date.format(DateTimeFormatter.ofPattern("yyyyMMdd")),
+                getTotal(List.of(date)));
+        return HtmxResponse.builder()
+                .view("index:: #overall-total")
+                .view("index::day-total")
+                .build();
     }
 
     private static List<LocalDate> getDaysOfCurrentWeek(Locale locale) {
@@ -60,11 +78,11 @@ public class HomeController {
                 .toList();
     }
 
-    private  Duration getTotal(List<LocalDate> daysOfCurrentWeek) {
+    private Duration getTotal(List<LocalDate> daysOfCurrentWeek) {
         Set<Integer> projectId = projectService.getProjects()
                 .stream()
                 .map(Project::id)
                 .collect(Collectors.toSet());
-        return timeRegistrationService.getTotal(projectId,Set.copyOf(daysOfCurrentWeek));
+        return timeRegistrationService.getTotal(projectId, Set.copyOf(daysOfCurrentWeek));
     }
 }

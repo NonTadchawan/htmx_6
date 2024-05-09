@@ -38,5 +38,16 @@
         </div>
     </div>
 </div>
+<div class="grid  grid-cols-9 mb-2 gap-x-2">
+    <div class="col-span-2"></div>
+    <div th:each="day : ${days}">
+        <div class="flex justify-center">
+            <div th:fragment="day-total"
+                 hx-swap-oob="true"
+                 th:id="${'dayTotal_'+#temporals.format(day,'yyyyMMdd')}"
+                 th:text="${__${'dayTotal_' + #temporals.format(day, 'yyyyMMdd')}__}">0</div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
