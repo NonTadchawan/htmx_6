@@ -40,7 +40,7 @@ public class HomeController {
         return "index";
     }
     @HxRequest
-    @PutMapping("project/{projectId}{date}")
+    @PutMapping("projects/{projectId}/{date}")
     public String update( @PathVariable int projectId,
                           @PathVariable LocalDate date,
                           Model model,
